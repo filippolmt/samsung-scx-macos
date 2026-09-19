@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; case \"$f\" in */bin/*) shfmt -i 2 -ci -bn -w \"$f\" 2>/dev/null; shellcheck \"$f\";; esac; } || true",
+            "timeout": 30,
+            "statusMessage": "shfmt + shellcheck"
+          }
+        ]
+      }
+    ]
+  }
+}
