@@ -1,0 +1,49 @@
+#!/bin/bash
+# Quick check of the Samsung SCX-4623FW printer and scanner.
+IP=${SCX_IP:-}
+QUEUE=Samsung_SCX4623FW
+
+if [ -z "$IP" ]; then
+  echo "SCX_IP is not set: it must hold the printer's address, for example"
+  echo "  export SCX_IP=192.168.1.50      # put it in ~/.zshrc to make it permanent"
+  exit 1
+fi
+
+ok() { printf "  \033[32m✓\033[0m %s\n" "$1"; }
+ko() { printf "  \033[31m✗\033[0m %s\n" "$1"; }
+
+echo "── Network ───────────────────────────────"
+if /sbin/ping -c 2 -t 3 "$IP" >/dev/null 2>&1; then
+  ok "$IP reachable"
+else
+  ko "$IP NOT reachable — printer off, unplugged or address changed"
+  echo "    Check the DHCP lease list on your router"
+  echo "    A different address: export SCX_IP=<address>"
+  exit 1
+fi
+
+for entry in "9100 print" "9400 scan" "80 web-interface"; do
+  # shellcheck disable=SC2086  # intentional: splits "9100 print" into port and label
+  set -- $entry
+  if nc -z -G 2 "$IP" "$1" >/dev/null 2>&1; then ok "port $1 open ($2)"; else ko "port $1 closed ($2)"; fi
+done
+
+echo
+echo "── Printing ──────────────────────────────"
+status=$(lpstat -p "$QUEUE" 2>&1)
+case "$status" in
+  *"is idle"*) ok "queue ready" ;;
+  *"is printing"*) ok "printing" ;;
+  *disabled*) ko "queue PAUSED — re-enable it with: cupsenable $QUEUE" ;;
+  *) ko "$status" ;;
+esac
+waiting=$(lpstat -o "$QUEUE" 2>/dev/null | wc -l | tr -d ' ')
+[ "$waiting" -gt 0 ] && echo "  $waiting job(s) waiting (clear them with: cancel -a $QUEUE)"
+
+echo
+echo "── Scanning ──────────────────────────────"
+if scanimage -L 2>/dev/null | grep -q "$IP"; then
+  ok "scanner detected by SANE"
+else
+  ko "scanner NOT detected — check /opt/homebrew/etc/sane.d/xerox_mfp.conf"
+fi

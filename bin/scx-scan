@@ -1,0 +1,105 @@
+#!/bin/bash
+# Scan from the networked Samsung SCX-4623FW (SANE xerox_mfp backend).
+set -uo pipefail
+
+IP=${SCX_IP:-}
+RES=300
+MODE=Gray
+SOURCE=Flatbed
+DEST="$HOME/Desktop"
+OPEN_PDF=1
+
+usage() {
+  cat <<'EOF'
+Usage: scx-scan [options]
+
+  -c          colour (default: greyscale)
+  -r DPI      resolution: 75|100|150|200|300|600|1200  (default: 300)
+  -a          automatic document feeder: every page into ONE PDF
+  -o FOLDER   destination folder (default: Desktop)
+  -q          do not open the PDF when done
+  -h          this message
+
+Examples:
+  scx-scan                 single sheet from the glass
+  scx-scan -c -r 600       colour photo at high resolution
+  scx-scan -a              stack of sheets from the feeder, one PDF
+  scx-scan -a -c -r 200    colour stack, lighter file
+
+The printer address must be in $SCX_IP:
+  export SCX_IP=192.168.1.50      # put it in ~/.zshrc to make it permanent
+EOF
+}
+
+while getopts "cr:ao:qh" opt; do
+  case $opt in
+    c) MODE=Color ;;
+    r) RES=$OPTARG ;;
+    a) SOURCE=ADF ;;
+    o) DEST=$OPTARG ;;
+    q) OPEN_PDF=0 ;;
+    h)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+[ -n "$IP" ] || {
+  echo "SCX_IP is not set: it must hold the printer's address, for example"
+  echo "  export SCX_IP=192.168.1.50      # put it in ~/.zshrc to make it permanent"
+  exit 1
+}
+DEV="xerox_mfp:tcp $IP"
+
+[ -d "$DEST" ] || {
+  echo "No such folder: $DEST"
+  exit 1
+}
+
+STAMP=$(date +%Y%m%d-%H%M%S)
+OUT="$DEST/scan-$STAMP.pdf"
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
+
+finish() {
+  echo "Saved: $OUT"
+  [ "$OPEN_PDF" = 1 ] && open "$OUT"
+  exit 0
+}
+
+if [ "$SOURCE" = ADF ]; then
+  echo "Feeder, ${RES} dpi ($MODE). Scanning..."
+  scanimage -d "$DEV" --resolution "$RES" --mode "$MODE" --source ADF \
+    --format=jpeg --batch="$TMP/page_%03d.jpg" 2>&1 \
+    | grep -E '^Scanning page|out of documents' \
+    | sed 's/^Scanning page/  page/; s/.*out of documents.*/  end of stack/'
+
+  shopt -s nullglob
+  pages=("$TMP"/page_*.jpg)
+  if [ ${#pages[@]} -eq 0 ]; then
+    echo
+    echo "No page scanned: the feeder is empty."
+    echo "Load the sheets in the top tray, face UP, and try again."
+    exit 1
+  fi
+
+  img2pdf --output "$OUT" --pagesize A4 "${pages[@]}" 2>/dev/null \
+    || img2pdf --output "$OUT" "${pages[@]}"
+  echo "${#pages[@]} pages merged into a single PDF."
+  finish
+else
+  echo "Glass, ${RES} dpi ($MODE). Scanning..."
+  scanimage -d "$DEV" --resolution "$RES" --mode "$MODE" --source Flatbed \
+    --format=jpeg -o "$TMP/s.jpg" || {
+    echo "Scan failed."
+    exit 1
+  }
+  img2pdf --output "$OUT" --pagesize A4 "$TMP/s.jpg" 2>/dev/null \
+    || sips -s format pdf "$TMP/s.jpg" --out "$OUT" >/dev/null
+  finish
+fi
