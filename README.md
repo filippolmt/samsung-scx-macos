@@ -21,8 +21,19 @@ Both scripts require the printer's address in the `SCX_IP` environment variable 
 refuse to run without it — there is no default:
 
 ```bash
-export SCX_IP=192.168.1.50      # in ~/.zshrc to make it permanent
+export SCX_IP=192.168.1.50      # in ~/.zshrc, or SCX_IP=... in the repo's .env
 ```
+
+Or keep it in a `.env` file at the repo root, which is gitignored; the scripts read it
+when `SCX_IP` is not already set, and it still works through the `/opt/homebrew/bin`
+symlinks:
+
+```bash
+echo 'SCX_IP=192.168.1.50' > .env
+```
+
+The scripts `source` this file, so it runs as shell code: keep it to `SCX_IP=...` lines
+and treat it like any other script you own.
 
 Find the address in your router's DHCP lease list, or on the printer itself under
 Menu › Network › Network Configuration, which prints a page with it.
@@ -67,11 +78,13 @@ ln -sf "$PWD/bin/scx-scan"     /opt/homebrew/bin/scx-scan
 ln -sf "$PWD/bin/scx-diagnose" /opt/homebrew/bin/scx-diagnose
 ```
 
-Make the `export` in step 2 permanent by adding it to `~/.zshrc`: the scripts read
-`SCX_IP` on every run and stop with an error if it is unset.
+Make the `export` in step 2 permanent by adding it to `~/.zshrc`, or put
+`SCX_IP=…` in the repo's gitignored `.env`: the scripts read `SCX_IP` on every run and
+stop with an error if it is unset.
 
 Everything else the scripts use — `scanimage` aside, that is `lpstat`, `lpoptions`,
-`cupsenable`, `cancel`, `sips`, `open`, `nc`, `/sbin/ping` — ships with macOS.
+`cupsenable`, `cancel`, `sips`, `open`, `nc`, `/sbin/ping`, `readlink`, `dirname` — ships
+with macOS.
 
 ### Check it, then scan
 

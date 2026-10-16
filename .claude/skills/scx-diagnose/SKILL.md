@@ -25,13 +25,14 @@ nc -z -G 2 "$SCX_IP" 9400   # scanning
 nc -z -G 2 "$SCX_IP" 80     # SyncThru web UI
 ```
 
-`SCX_IP` unset → the scripts stop with an error; there is no default address. Ask the
+`SCX_IP` unset → the scripts stop with an error; there is no default address. They read
+it from the environment, else from the gitignored `.env` at the repo root. Ask the
 user for the printer's address rather than guessing one, and never write a real address
 into the repo.
 
 Unreachable → the printer is off, unplugged, or its address changed. Check the DHCP lease
 list on the router. SANE keeps its own copy of the address, so a change means
-`export SCX_IP=<new>` plus editing the `tcp <address>` line in
+updating `SCX_IP` (`export` or `.env`) plus editing the `tcp <address>` line in
 `/opt/homebrew/etc/sane.d/xerox_mfp.conf`.
 
 ## 3. Printing

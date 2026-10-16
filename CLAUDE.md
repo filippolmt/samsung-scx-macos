@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Documentation plus two Bash scripts that make a Samsung SCX-4623FW network multifunction
 printer print and scan on macOS 26 (Apple Silicon). There is no build system, no test
-suite, no CI, and no package manifest. Nothing compiles. The deliverables are `README.md`,
+suite, and no package manifest. Nothing compiles. The deliverables are `README.md`,
 `bin/scx-scan` and `bin/scx-diagnose`.
 
 Goal: a tool other SCX-4623FW owners can use. Do not hardcode new machine-specific network
@@ -22,8 +22,15 @@ detection:
 bin/scx-diagnose
 ```
 
-It requires macOS with the real printer on the LAN. It cannot run in a Linux container or
-without the hardware — say so rather than reporting an untested change as verified.
+`bin/scx-diagnose` needs macOS (CUPS, BSD `ping`, `open`) and the printer on the LAN —
+say so rather than reporting an untested change as verified. `bin/scx-scan` also needs
+macOS (`open`, `sips`), but the scan itself only needs LAN reachability: on Linux,
+`scanimage` from `sane-utils` works once `/etc/sane.d/xerox_mfp.conf` has
+`tcp <printer-ip>`. Probe ports 9100/9400 with `bash -c '</dev/tcp/<printer-ip>/9400'`
+before declaring the printer unreachable.
+
+CI (`.github/workflows/check.yml`) runs shellcheck and shfmt on `bin/` and fails on any
+private IPv4 address other than the `192.168.1.50` placeholder.
 
 ## Language
 
@@ -38,9 +45,10 @@ Italian.
   it silently with no error. Use `drv:///sample.drv/generpcl.ppd`. If printing produces
   code pages or nothing at all, suspect the driver before the network.
 - **No network data in the repo, ever.** Both scripts require `SCX_IP` and exit with an
-  error when it is unset; there is no default address. Documentation uses the placeholder
-  `192.168.1.50` or `<printer-ip>`. Never commit a real LAN address, MAC address, router
-  brand or hostname — not in prose, not in example output.
+  error when it is unset; there is no default address. If the environment lacks it they
+  source the repo-root `.env`, which is gitignored and holds the real address locally.
+  Documentation uses the placeholder `192.168.1.50` or `<printer-ip>`. Never commit a real
+  LAN address, MAC address, router brand or hostname — not in prose, not in example output.
 - **SANE keeps its own copy of the address** in `/opt/homebrew/etc/sane.d/xerox_mfp.conf`
   (line `tcp <printer-ip>`), outside the repo. That file is not version-controlled and a
   `sane-backends` reinstall wipes it — check it first when the scanner "disappears".
@@ -55,9 +63,6 @@ Italian.
   `Printer drivers are deprecated` warning is expected and harmless.
 - **No AirScan/eSCL and no duplex ADF.** Only Samsung's proprietary port 9400 works, via
   SANE's `xerox_mfp` backend. Double-sided originals need two passes.
-- **`README.md` and the whole `bin/` directory are uncommitted.** HEAD's `README.md` is
-  a one-line stub. Do not assume repository content is committed, and confirm before
-  committing.
 
 ## Recreating the print queue
 
@@ -94,4 +99,5 @@ A major macOS upgrade can wipe CUPS queues.
 
 Declared only in the README's Installation section: `brew install sane-backends img2pdf`.
 `scanimage` comes with `sane-backends`. The rest are macOS built-ins: `lpadmin`,
-`lpstat`, `lpoptions`, `cupsenable`, `cancel`, `sips`, `open`, `nc`, `/sbin/ping`.
+`lpstat`, `lpoptions`, `cupsenable`, `cancel`, `sips`, `open`, `nc`, `/sbin/ping`,
+`readlink`, `dirname`.
