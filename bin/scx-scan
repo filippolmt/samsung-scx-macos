@@ -2,6 +2,11 @@
 # Scan from the networked Samsung SCX-4623FW (SANE xerox_mfp backend).
 set -uo pipefail
 
+# A gitignored .env at the repo root supplies SCX_IP when the environment does not.
+ENV_FILE="$(dirname "$(readlink -f "$0")")/../.env"
+# shellcheck source=/dev/null
+[ -z "${SCX_IP:-}" ] && [ -f "$ENV_FILE" ] && . "$ENV_FILE"
+
 IP=${SCX_IP:-}
 RES=300
 MODE=Gray
@@ -27,7 +32,7 @@ Examples:
   scx-scan -a -c -r 200    colour stack, lighter file
 
 The printer address must be in $SCX_IP:
-  export SCX_IP=192.168.1.50      # put it in ~/.zshrc to make it permanent
+  export SCX_IP=192.168.1.50      # or SCX_IP=... in the repo's .env
 EOF
 }
 
@@ -51,7 +56,7 @@ done
 
 [ -n "$IP" ] || {
   echo "SCX_IP is not set: it must hold the printer's address, for example"
-  echo "  export SCX_IP=192.168.1.50      # put it in ~/.zshrc to make it permanent"
+  echo "  export SCX_IP=192.168.1.50      # or SCX_IP=... in the repo's .env"
   exit 1
 }
 DEV="xerox_mfp:tcp $IP"
