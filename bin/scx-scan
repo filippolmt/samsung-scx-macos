@@ -8,6 +8,7 @@ ENV_FILE="$(dirname "$(readlink -f "$0")")/../.env"
 [ -z "${SCX_IP:-}" ] && [ -f "$ENV_FILE" ] && . "$ENV_FILE"
 
 IP=${SCX_IP:-}
+IP=${IP%$'\r'} # a .env saved with CRLF line endings
 RES=300
 MODE=Gray
 SOURCE=Flatbed

@@ -23,10 +23,11 @@ bin/scx-diagnose
 ```
 
 `bin/scx-diagnose` needs macOS (CUPS, BSD `ping`, `open`) and the printer on the LAN —
-say so rather than reporting an untested change as verified. Scanning only needs LAN
-reachability: on Linux, `scanimage` from `sane-utils` works once
-`/etc/sane.d/xerox_mfp.conf` has `tcp <printer-ip>`. Probe ports 9100/9400 with
-`bash -c '</dev/tcp/<ip>/9400'` before declaring the printer unreachable.
+say so rather than reporting an untested change as verified. `bin/scx-scan` also needs
+macOS (`open`, `sips`), but the scan itself only needs LAN reachability: on Linux,
+`scanimage` from `sane-utils` works once `/etc/sane.d/xerox_mfp.conf` has
+`tcp <printer-ip>`. Probe ports 9100/9400 with `bash -c '</dev/tcp/<printer-ip>/9400'`
+before declaring the printer unreachable.
 
 CI (`.github/workflows/check.yml`) runs shellcheck and shfmt on `bin/` and fails on any
 private IPv4 address other than the `192.168.1.50` placeholder.
@@ -98,4 +99,5 @@ A major macOS upgrade can wipe CUPS queues.
 
 Declared only in the README's Installation section: `brew install sane-backends img2pdf`.
 `scanimage` comes with `sane-backends`. The rest are macOS built-ins: `lpadmin`,
-`lpstat`, `lpoptions`, `cupsenable`, `cancel`, `sips`, `open`, `nc`, `/sbin/ping`.
+`lpstat`, `lpoptions`, `cupsenable`, `cancel`, `sips`, `open`, `nc`, `/sbin/ping`,
+`readlink`, `dirname`.
